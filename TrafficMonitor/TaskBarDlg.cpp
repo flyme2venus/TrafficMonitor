@@ -297,6 +297,35 @@ void CTaskBarDlg::DrawDisplayItem(IDrawCommon& drawer, DisplayItem type, CRect r
         }
     }
 
+    //竖向任务栏下，网速项目（↑/↓/↑↓）在同一行显示箭头和网速
+    if (!IsTasksbarOnTopOrBottom() && (type == TDI_UP || type == TDI_DOWN || type == TDI_TOTAL_SPEED))
+    {
+        wstring str_label = theApp.m_taskbar_data.disp_str.GetConst(type);
+        // 去掉冒号以节省空间，避免拥挤：例如 "↑: " -> "↑ "
+        while (!str_label.empty() && (str_label.back() == L' ' || str_label.back() == L':'))
+            str_label.pop_back();
+        str_label += L' ';
+
+        CString str_value = CommonDisplayItem(type).GetItemValueText(false);
+
+        m_pDC->SelectObject(&m_font);
+        int cur_label_width = m_pDC->GetTextExtent(str_label.c_str()).cx;
+        int val_width = m_pDC->GetTextExtent(str_value).cx;
+        int total_w = cur_label_width + val_width;
+
+        // 箭头与网速整体居中于任务栏列宽内
+        int start_x = (rect.Width() - total_w) / 2;
+        if (start_x < DPI(1))
+            start_x = DPI(1);
+
+        rect_label.SetRect(rect.left + start_x, rect.top, rect.left + start_x + cur_label_width, rect.bottom);
+        rect_value.SetRect(rect_label.right, rect.top, rect.right, rect.bottom);
+
+        drawer.DrawWindowText(rect_label, str_label.c_str(), label_color, IDrawCommon::Alignment::LEFT);
+        drawer.DrawWindowText(rect_value, str_value, text_color, IDrawCommon::Alignment::LEFT);
+        return;
+    }
+
     //绘制标签
     if (label_width > 0)
     {
@@ -926,8 +955,9 @@ void CTaskBarDlg::CalculateWindowSize()
         CRect item_rect;
         for (auto iter = m_item_widths.begin(); iter != m_item_widths.end(); ++iter)
         {
-            // 如果任务栏较窄放不下单行（标签+数值），或者属于独占双行项目，使用双行显示（上标签下数值居中）
-            bool need_double_line = iter->IsDoubleLineExclusive() || (iter->item_width.TotalWidth() > m_window_width - DPI(4));
+            // 网速项目（上传/下载/总网速）在竖向任务栏下保持单行显示（箭头与网速位于同一行）
+            bool is_netspeed = !iter->IsPlugin() && (iter->ItemType() == TDI_UP || iter->ItemType() == TDI_DOWN || iter->ItemType() == TDI_TOTAL_SPEED);
+            bool need_double_line = !is_netspeed && (iter->IsDoubleLineExclusive() || (iter->item_width.TotalWidth() > m_window_width - DPI(4)));
             iter->is_double_line = need_double_line;
 
             int item_height = need_double_line ? TASKBAR_WND_HEIGHT : (TASKBAR_WND_HEIGHT / 2);
