@@ -917,25 +917,26 @@ void CTaskBarDlg::CalculateWindowSize()
     }
     else        //任务栏在桌面两侧时
     {
-        m_window_width = 0;
+        // 窗口宽度与竖向任务栏宽度保持一致（确保完全嵌入任务栏，不会突出到桌面上）
+        m_window_width = m_rcTaskbar.Width();
+        if (m_window_width <= 0)
+            m_window_width = DPI(48);
+
         m_window_height = 0;
         CRect item_rect;
         for (auto iter = m_item_widths.begin(); iter != m_item_widths.end(); ++iter)
         {
-            //所有标签中最大的宽度即为窗口宽度
-            if (m_window_width < iter->item_width.TotalWidth())
-                m_window_width = iter->item_width.TotalWidth();
+            // 如果任务栏较窄放不下单行（标签+数值），或者属于独占双行项目，使用双行显示（上标签下数值居中）
+            bool need_double_line = iter->IsDoubleLineExclusive() || (iter->item_width.TotalWidth() > m_window_width - DPI(4));
+            iter->is_double_line = need_double_line;
 
-            int item_height = TASKBAR_WND_HEIGHT / 2;
-            if (iter->IsDoubleLineExclusive())
-                item_height = TASKBAR_WND_HEIGHT;
+            int item_height = need_double_line ? TASKBAR_WND_HEIGHT : (TASKBAR_WND_HEIGHT / 2);
 
             //计算矩形区域
             item_rect.top = m_window_height;
             item_rect.bottom = item_rect.top + item_height;
-            int item_width = min(m_window_width, m_rcTaskbar.Width() - DPI(2));
             item_rect.left = 0;
-            item_rect.right = item_rect.left + item_width;
+            item_rect.right = m_window_width;
             m_item_rects[*iter] = item_rect;
 
             m_window_height += item_height;
