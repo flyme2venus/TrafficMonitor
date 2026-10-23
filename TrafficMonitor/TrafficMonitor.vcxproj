@@ -863,6 +863,7 @@
     <ClInclude Include="tinyxml2\tinyxml2.h" />
     <ClInclude Include="TrafficMonitor.h" />
     <ClInclude Include="TrafficMonitorDlg.h" />
+    <ClInclude Include="ValueUnitText.h" />
     <ClInclude Include="UpdateHelper.h" />
     <ClInclude Include="WIC.h" />
     <ClInclude Include="Win11TaskbarDlg.h" />

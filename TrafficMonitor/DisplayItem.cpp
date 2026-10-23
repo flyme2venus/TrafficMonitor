@@ -182,11 +182,14 @@ const wchar_t* CommonDisplayItem::GetItemIniKeyName() const
     }
 }
 
-CString CommonDisplayItem::GetItemValueText(bool is_main_window) const
+ValueUnitText CommonDisplayItem::GetItemValueUnitText(bool is_main_window) const
 {
     if (is_plugin)
     {
-        return plugin_item->GetItemValueText();
+        //插件项目的文本完全由插件决定，不拆分单位
+        ValueUnitText value_unit_text;
+        value_unit_text.value = plugin_item->GetItemValueText();
+        return value_unit_text;
     }
     else
     {
@@ -195,7 +198,7 @@ CString CommonDisplayItem::GetItemValueText(bool is_main_window) const
             cfg_data = &theApp.m_main_wnd_data;
         else
             cfg_data = &theApp.m_taskbar_data;
-        CString str_value;
+        ValueUnitText value_unit_text;
         switch (item_type)
         {
         //上传、下载、总网速
@@ -203,124 +206,135 @@ CString CommonDisplayItem::GetItemValueText(bool is_main_window) const
         case TDI_DOWN:
         case TDI_TOTAL_SPEED:
         {
-            CString str_in_speed = CCommon::DataSizeToString(theApp.m_in_speed, *cfg_data);
-            CString str_out_speed = CCommon::DataSizeToString(theApp.m_out_speed, *cfg_data);
-            CString str_total_speed = CCommon::DataSizeToString(theApp.m_in_speed + theApp.m_out_speed, *cfg_data);
+            ValueUnitText in_speed = CCommon::DataSizeToValueUnit(theApp.m_in_speed, *cfg_data);
+            ValueUnitText out_speed = CCommon::DataSizeToValueUnit(theApp.m_out_speed, *cfg_data);
+            ValueUnitText total_speed = CCommon::DataSizeToValueUnit(theApp.m_in_speed + theApp.m_out_speed, *cfg_data);
             if (!cfg_data->hide_unit || cfg_data->speed_unit == SpeedUnit::AUTO)
             {
-                str_in_speed += _T("/s");
-                str_out_speed += _T("/s");
-                str_total_speed += _T("/s");
+                in_speed.unit += _T("/s");
+                out_speed.unit += _T("/s");
+                total_speed.unit += _T("/s");
             }
             //交换上传和下载位置
             if (is_main_window && theApp.m_main_wnd_data.swap_up_down)
-                std::swap(str_in_speed, str_out_speed);
+                std::swap(in_speed, out_speed);
             if (item_type == TDI_UP)
-                str_value = str_out_speed;
+                value_unit_text = out_speed;
             else if (item_type == TDI_DOWN)
-                str_value = str_in_speed;
+                value_unit_text = in_speed;
             else
-                str_value = str_total_speed;
+                value_unit_text = total_speed;
         }
             break;
         //CPU利用率
         case TDI_CPU:
-            str_value = CCommon::UsageToString(theApp.m_cpu_usage, *cfg_data);
+            value_unit_text = CCommon::UsageToValueUnit(theApp.m_cpu_usage, *cfg_data);
             break;
         //内存利用率
         case TDI_MEMORY:
             if (cfg_data->memory_display == MemoryDisplay::MEMORY_USED)
-                str_value = CCommon::DataSizeToString(static_cast<unsigned long long>(theApp.m_used_memory) * 1024, cfg_data->separate_value_unit_with_space);
+                value_unit_text = CCommon::DataSizeToValueUnit(static_cast<unsigned long long>(theApp.m_used_memory) * 1024, cfg_data->separate_value_unit_with_space);
             else if (cfg_data->memory_display == MemoryDisplay::MEMORY_AVAILABLE)
-                str_value = CCommon::DataSizeToString((static_cast<unsigned long long>(theApp.m_total_memory) - static_cast<unsigned long long>(theApp.m_used_memory)) * 1024, cfg_data->separate_value_unit_with_space);
+                value_unit_text = CCommon::DataSizeToValueUnit((static_cast<unsigned long long>(theApp.m_total_memory) - static_cast<unsigned long long>(theApp.m_used_memory)) * 1024, cfg_data->separate_value_unit_with_space);
             else
-                str_value = CCommon::UsageToString(theApp.m_memory_usage, *cfg_data);
+                value_unit_text = CCommon::UsageToValueUnit(theApp.m_memory_usage, *cfg_data);
             break;
         //显卡利用率
         case TDI_GPU_USAGE:
-            str_value = CCommon::UsageToString(theApp.m_gpu_usage, *cfg_data);
+            value_unit_text = CCommon::UsageToValueUnit(theApp.m_gpu_usage, *cfg_data);
             break;
         //硬盘利用率
         case TDI_HDD_USAGE:
-            str_value = CCommon::UsageToString(theApp.m_hdd_usage, *cfg_data);
+            value_unit_text = CCommon::UsageToValueUnit(theApp.m_hdd_usage, *cfg_data);
             break;
         //CPU温度
         case TDI_CPU_TEMP:
-            str_value = CCommon::TemperatureToString(theApp.m_cpu_temperature, *cfg_data);
+            value_unit_text = CCommon::TemperatureToValueUnit(theApp.m_cpu_temperature, *cfg_data);
             break;
         //显卡温度
         case TDI_GPU_TEMP:
-            str_value = CCommon::TemperatureToString(theApp.m_gpu_temperature, *cfg_data);
+            value_unit_text = CCommon::TemperatureToValueUnit(theApp.m_gpu_temperature, *cfg_data);
             break;
         //硬盘温度
         case TDI_HDD_TEMP:
-            str_value = CCommon::TemperatureToString(theApp.m_hdd_temperature, *cfg_data);
+            value_unit_text = CCommon::TemperatureToValueUnit(theApp.m_hdd_temperature, *cfg_data);
             break;
         //主板温度
         case TDI_MAIN_BOARD_TEMP:
-            str_value = CCommon::TemperatureToString(theApp.m_main_board_temperature, *cfg_data);
+            value_unit_text = CCommon::TemperatureToValueUnit(theApp.m_main_board_temperature, *cfg_data);
             break;
         //CPU频率
         case TDI_CPU_FREQ:
-            str_value = CCommon::FreqToString(theApp.m_cpu_freq, *cfg_data);
+            value_unit_text = CCommon::FreqToValueUnit(theApp.m_cpu_freq, *cfg_data);
             break;
         //总流量
         case TDI_TODAY_TRAFFIC:
-            str_value = CCommon::KBytesToString((theApp.m_today_up_traffic + theApp.m_today_down_traffic) / 1024u);
+            value_unit_text = CCommon::KBytesToValueUnit((theApp.m_today_up_traffic + theApp.m_today_down_traffic) / 1024u);
             break;
         default:
             break;
         }
-        return str_value;
+        return value_unit_text;
     }
 }
 
-CString CommonDisplayItem::GetItemValueSampleText(bool is_main_window) const
+ValueUnitText CommonDisplayItem::GetItemValueSampleUnitText(bool is_main_window) const
 {
     if (is_plugin)
     {
-        return plugin_item->GetItemValueSampleText();
+        //插件项目的文本完全由插件决定，不拆分单位
+        ValueUnitText value_unit_text;
+        value_unit_text.value = plugin_item->GetItemValueSampleText();
+        return value_unit_text;
     }
     //主窗口（用于绘制预览图）
     else if (is_main_window)
     {
-        CString sample_str;
+        ValueUnitText value_unit_text;
         switch (item_type)
         {
         case TDI_UP:
-            sample_str = _T("88.8 KB/s");
+            value_unit_text.value = _T("88.8");
+            value_unit_text.unit = _T(" KB/s");
             break;
         case TDI_DOWN:
-            sample_str = _T("88.9 KB/s");
+            value_unit_text.value = _T("88.9");
+            value_unit_text.unit = _T(" KB/s");
             break;
         case TDI_TOTAL_SPEED:
-            sample_str = _T("90 KB/s");
+            value_unit_text.value = _T("90");
+            value_unit_text.unit = _T(" KB/s");
             break;
         case TDI_TODAY_TRAFFIC:
-            sample_str = _T("100 MB");
+            value_unit_text.value = _T("100");
+            value_unit_text.unit = _T(" MB");
             break;
         case TDI_CPU:
-            sample_str = _T("50 %");
+            value_unit_text.value = _T("50");
+            value_unit_text.unit = _T(" %");
             break;
         case TDI_MEMORY:
-            sample_str = _T("51 %");
+            value_unit_text.value = _T("51");
+            value_unit_text.unit = _T(" %");
             break;
         case TDI_CPU_TEMP: case TDI_GPU_TEMP: case TDI_HDD_TEMP: case TDI_MAIN_BOARD_TEMP:
-            sample_str = _T("40 °C");
+            value_unit_text.value = _T("40");
+            value_unit_text.unit = _T(" °C");
             break;
         case TDI_CPU_FREQ:
-            sample_str = _T("1.0 GHz");
+            value_unit_text.value = _T("1.0");
+            value_unit_text.unit = _T(" GHz");
             break;
         default:
-            sample_str = _T("99");
+            value_unit_text.value = _T("99");
             break;
         }
-        return sample_str;
+        return value_unit_text;
     }
     //任务栏窗口（用于计算任务栏窗口宽度）
     else
     {
-        CString sample_str;
+        ValueUnitText value_unit_text;
         switch (item_type)
         {
         //网速
@@ -333,21 +347,28 @@ CString CommonDisplayItem::GetItemValueSampleText(bool is_main_window) const
             if (theApp.m_taskbar_data.speed_short_mode)
             {
                 if (hide_unit)
-                    sample_str.Format(_T("%s."), digits.c_str());
+                    value_unit_text.value.Format(_T("%s."), digits.c_str());
                 else
-                    sample_str.Format(_T("%s.M/s"), digits.c_str());
+                {
+                    value_unit_text.value.Format(_T("%s."), digits.c_str());
+                    value_unit_text.unit = _T("M/s");
+                }
             }
             else
             {
                 if (hide_unit)
-                    sample_str.Format(_T("%s.8"), digits.c_str());
+                    value_unit_text.value.Format(_T("%s.8"), digits.c_str());
                 else
-                    sample_str.Format(_T("%s.8MB/s"), digits.c_str());
+                {
+                    value_unit_text.value.Format(_T("%s.8"), digits.c_str());
+                    value_unit_text.unit = _T("MB/s");
+                }
             }
+            //注：原实现中空格是添加在整个字符串末尾的，这里同样把空格放在单位的末尾，保证测得的宽度不变
             if (!hide_unit && theApp.m_taskbar_data.separate_value_unit_with_space)
-                sample_str += _T(' ');
+                value_unit_text.unit += _T(' ');
             if (theApp.m_taskbar_data.speed_short_mode && !theApp.m_taskbar_data.unit_byte && !theApp.m_taskbar_data.hide_unit)
-                sample_str += _T('b');
+                value_unit_text.unit += _T('b');
         }
             break;
         //占用率百分比
@@ -356,13 +377,13 @@ CString CommonDisplayItem::GetItemValueSampleText(bool is_main_window) const
         case TDI_GPU_USAGE:
         case TDI_HDD_USAGE:
         {
-            sample_str = _T("100");
+            value_unit_text.value = _T("100");
             if (!theApp.m_taskbar_data.hide_percent)
             {
                 if (theApp.m_taskbar_data.separate_value_unit_with_space)
-                    sample_str += _T(" %");
+                    value_unit_text.unit = _T(" %");
                 else
-                    sample_str += _T("%");
+                    value_unit_text.unit = _T("%");
             }
             //内存显示不为已使用百分比时
             if (item_type == TDI_MEMORY)
@@ -370,7 +391,7 @@ CString CommonDisplayItem::GetItemValueSampleText(bool is_main_window) const
                 if (theApp.m_taskbar_data.memory_display == MemoryDisplay::MEMORY_USED || theApp.m_taskbar_data.memory_display == MemoryDisplay::MEMORY_AVAILABLE)
                 {
                     //宽度为总内存的宽度
-                    sample_str = CCommon::DataSizeToString(static_cast<unsigned long long>(theApp.m_total_memory) * 1024, theApp.m_taskbar_data.separate_value_unit_with_space);
+                    value_unit_text = CCommon::DataSizeToValueUnit(static_cast<unsigned long long>(theApp.m_total_memory) * 1024, theApp.m_taskbar_data.separate_value_unit_with_space);
                 }
             }
         }
@@ -381,32 +402,35 @@ CString CommonDisplayItem::GetItemValueSampleText(bool is_main_window) const
         case TDI_HDD_TEMP:
         case TDI_MAIN_BOARD_TEMP:
         {
+            value_unit_text.value = _T("99");
             if (theApp.m_taskbar_data.separate_value_unit_with_space)
-                sample_str = _T("99 °C");
+                value_unit_text.unit = _T(" °C");
             else
-                sample_str = _T("99°C");
+                value_unit_text.unit = _T("°C");
         }
             break;
         //CPU频率
         case TDI_CPU_FREQ:
         {
+            value_unit_text.value = _T("1.00");
             if (theApp.m_taskbar_data.separate_value_unit_with_space)
-                sample_str = _T("1.00 GHz");
+                value_unit_text.unit = _T(" GHz");
             else
-                sample_str = _T("1.00GHz");
+                value_unit_text.unit = _T("GHz");
         }
             break;
         //流量
         case TDI_TODAY_TRAFFIC:
         {
+            value_unit_text.value = _T("999.99");
             if (theApp.m_taskbar_data.separate_value_unit_with_space)
-                sample_str = _T("999.99 MB");
+                value_unit_text.unit = _T(" MB");
             else
-                sample_str = _T("999.99MB");
+                value_unit_text.unit = _T("MB");
         }
             break;
         }
-        return sample_str;
+        return value_unit_text;
     }
 }
 

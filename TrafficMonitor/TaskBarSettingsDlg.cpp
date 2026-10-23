@@ -236,6 +236,7 @@ BEGIN_MESSAGE_MAP(CTaskBarSettingsDlg, CTabDlg)
     ON_BN_CLICKED(IDC_HIDE_UNIT_CHECK, &CTaskBarSettingsDlg::OnBnClickedHideUnitCheck)
     ON_BN_CLICKED(IDC_VALUE_RIGHT_ALIGN_CHECK, &CTaskBarSettingsDlg::OnBnClickedValueRightAlignCheck)
     ON_BN_CLICKED(IDC_HIDE_PERCENTAGE_CHECK, &CTaskBarSettingsDlg::OnBnClickedHidePercentageCheck)
+    ON_BN_CLICKED(IDC_SMALL_UNIT_FONT_CHECK, &CTaskBarSettingsDlg::OnBnClickedSmallUnitFontCheck)
     ON_MESSAGE(WM_STATIC_CLICKED, &CTaskBarSettingsDlg::OnStaticClicked)
     ON_BN_CLICKED(IDC_SPECIFY_EACH_ITEM_COLOR_CHECK, &CTaskBarSettingsDlg::OnBnClickedSpecifyEachItemColorCheck)
     ON_CBN_SELCHANGE(IDC_DOUBLE_CLICK_COMBO, &CTaskBarSettingsDlg::OnCbnSelchangeDoubleClickCombo)
@@ -346,6 +347,7 @@ BOOL CTaskBarSettingsDlg::OnInitDialog()
         m_hide_unit_chk.EnableWindow(FALSE);
     }
     ((CButton*)GetDlgItem(IDC_HIDE_PERCENTAGE_CHECK))->SetCheck(m_data.hide_percent);
+    ((CButton*)GetDlgItem(IDC_SMALL_UNIT_FONT_CHECK))->SetCheck(m_data.small_unit_font);
     ((CButton*)GetDlgItem(IDC_SPECIFY_EACH_ITEM_COLOR_CHECK))->SetCheck(m_data.specify_each_item_color);
     m_background_transparent_chk.SetCheck(m_data.IsTaskbarTransparent());
     m_atuo_adapt_light_theme_chk.SetCheck(m_data.auto_adapt_light_theme);
@@ -595,6 +597,12 @@ void CTaskBarSettingsDlg::OnBnClickedHidePercentageCheck()
 {
     // TODO: 在此添加控件通知处理程序代码
     m_data.hide_percent = (((CButton*)GetDlgItem(IDC_HIDE_PERCENTAGE_CHECK))->GetCheck() != 0);
+}
+
+
+void CTaskBarSettingsDlg::OnBnClickedSmallUnitFontCheck()
+{
+    m_data.small_unit_font = (((CButton*)GetDlgItem(IDC_SMALL_UNIT_FONT_CHECK))->GetCheck() != 0);
 }
 
 

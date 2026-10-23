@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "ValueUnitText.h"
 #include "PluginInterface.h"
 
 //内置的显示的项目
@@ -63,14 +64,34 @@ public:
      * @param   is_main_window 如果为true则为主窗口，否则为任务栏窗口
      * @return  显示的文本
      */
-    CString GetItemValueText(bool is_main_window) const;
+    CString GetItemValueText(bool is_main_window) const
+    {
+        return GetItemValueUnitText(is_main_window).ToString();
+    }
+
+    /**
+     * @brief   获取一个显示项目的数值文本，数值和单位分开返回
+     * @param   is_main_window 如果为true则为主窗口，否则为任务栏窗口
+     * @return  数值和单位文本
+     */
+    ValueUnitText GetItemValueUnitText(bool is_main_window) const;
 
     /**
      * @brief   获取一个显示项目的数值示例文本
      * @param   is_main_window 如果为true则为主窗口，否则为任务栏窗口
      * @return  示例文本
      */
-    CString GetItemValueSampleText(bool is_main_window) const;
+    CString GetItemValueSampleText(bool is_main_window) const
+    {
+        return GetItemValueSampleUnitText(is_main_window).ToString();
+    }
+
+    /**
+     * @brief   获取一个显示项目的数值示例文本，数值和单位分开返回
+     * @param   is_main_window 如果为true则为主窗口，否则为任务栏窗口
+     * @return  示例数值和单位文本
+     */
+    ValueUnitText GetItemValueSampleUnitText(bool is_main_window) const;
 
     //是否在任务栏中独占双行
     bool IsDoubleLineExclusive() const;

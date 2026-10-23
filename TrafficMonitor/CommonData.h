@@ -1,6 +1,7 @@
 ﻿//此文件包含全局结构体、枚举类型的定义
 #pragma once
 #include "stdafx.h"
+#include "ValueUnitText.h"
 #include "TaskbarItemOrderHelper.h"
 
 struct Date
@@ -109,6 +110,25 @@ inline int FontSizeToLfHeight(int font_size, int dpi = 0)
     }
     int lfHeight = -MulDiv(font_size, dpi, 72);
     return lfHeight;
+}
+
+//字号的最小值和最大值（选项设置中允许用户输入的字体大小范围）
+#define MIN_FONT_SIZE 5
+#define MAX_FONT_SIZE 72
+
+//“单位小字号”时，单位字号相对于数值字号的缩放比例
+constexpr double UNIT_FONT_SCALE = 0.75;
+
+//根据数值字号计算单位字号
+inline int UnitFontSize(int value_font_size)
+{
+    int unit_size = static_cast<int>(value_font_size * UNIT_FONT_SCALE);
+    if (unit_size < MIN_FONT_SIZE)
+        unit_size = MIN_FONT_SIZE;
+    //单位字号不能大于数值字号
+    if (unit_size > value_font_size)
+        unit_size = value_font_size;
+    return unit_size;
 }
 
 //字体
@@ -252,6 +272,7 @@ struct PublicSettingData
     SpeedUnit speed_unit;       //网速的单位
     bool hide_unit;         //隐藏单位
     bool hide_percent;      //隐藏百分号
+    bool small_unit_font{ false };  //单位使用较小的字号显示
     DoubleClickAction double_click_action;      //鼠标双击动作
     wstring double_click_exe;   //鼠标双击动作为打开指定应用程序时，打开的程序路径
 };

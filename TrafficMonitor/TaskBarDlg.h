@@ -153,6 +153,22 @@ protected:
     UINT m_taskbar_dpi{};//TaskBarDlg自身专用dpi
 
     CFont m_font;			//字体
+    CFont m_unit_font;      //单位使用的较小字体（用于“单位小字号”显示）
+    int m_unit_font_offset{};   //单位文本相对于数值文本的垂直偏移量（用于和数值基线对齐）
+
+    //创建任务栏窗口使用的字体（包括单位字体）
+    void CreateFonts();
+
+    //在rect内绘制数值和单位。align为水平对齐方式。
+    //返回实际占用的宽度
+    int DrawValueWithUnit(IDrawCommon& drawer, const ValueUnitText& value_unit_text, CRect rect, COLORREF color,
+        IDrawCommon::Alignment align);
+
+    //获取绘制单位文本时使用的矩形（在rect的基础上做基线对齐的垂直偏移）
+    CRect UnitTextRect(const CRect& rect) const;
+
+    //是否使用小字号绘制单位
+    bool IsSmallUnitFontEnable(const ValueUnitText& value_unit_text) const;
 
     CDC* m_pDC{};		//窗口的DC，用来计算窗口的宽度
 

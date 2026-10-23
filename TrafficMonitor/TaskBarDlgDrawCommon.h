@@ -232,9 +232,17 @@ private:
     class CDWriteHelper
     {
     private:
-        Microsoft::WRL::ComPtr<IDWriteTextFormat> m_p_text_format{};
-        HFONT m_h_last_font{};
-        LOGFONTW m_last_font{};
+        //同时可能存在两种字体（数值字体和单位字体），因此缓存两个TextFormat，
+        //避免在两种字号之间来回切换时每次都重新创建TextFormat
+        struct FontEntry
+        {
+            HFONT h_font{};
+            LOGFONTW log_font{};
+            Microsoft::WRL::ComPtr<IDWriteTextFormat> p_text_format{};
+        };
+        static constexpr int FONT_ENTRY_COUNT = 2;
+        FontEntry m_font_entries[FONT_ENTRY_COUNT]{};
+        int m_current_index{};
 
     public:
         CDWriteHelper() = default;

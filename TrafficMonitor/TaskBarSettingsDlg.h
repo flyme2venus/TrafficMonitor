@@ -85,6 +85,7 @@ public:
     virtual void OnOK();
     afx_msg void OnBnClickedValueRightAlignCheck();
     afx_msg void OnBnClickedHidePercentageCheck();
+    afx_msg void OnBnClickedSmallUnitFontCheck();
 protected:
     afx_msg LRESULT OnStaticClicked(WPARAM wParam, LPARAM lParam);
 public:

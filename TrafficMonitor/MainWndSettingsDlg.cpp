@@ -152,6 +152,7 @@ BEGIN_MESSAGE_MAP(CMainWndSettingsDlg, CTabDlg)
     ON_CBN_SELCHANGE(IDC_UNIT_COMBO, &CMainWndSettingsDlg::OnCbnSelchangeUnitCombo)
     ON_BN_CLICKED(IDC_HIDE_UNIT_CHECK, &CMainWndSettingsDlg::OnBnClickedHideUnitCheck)
     ON_BN_CLICKED(IDC_HIDE_PERCENTAGE_CHECK, &CMainWndSettingsDlg::OnBnClickedHidePercentageCheck)
+    ON_BN_CLICKED(IDC_SMALL_UNIT_FONT_CHECK, &CMainWndSettingsDlg::OnBnClickedSmallUnitFontCheck)
     ON_MESSAGE(WM_STATIC_CLICKED, &CMainWndSettingsDlg::OnStaticClicked)
     ON_BN_CLICKED(IDC_SPECIFY_EACH_ITEM_COLOR_CHECK, &CMainWndSettingsDlg::OnBnClickedSpecifyEachItemColorCheck)
     ON_CBN_SELCHANGE(IDC_DOUBLE_CLICK_COMBO, &CMainWndSettingsDlg::OnCbnSelchangeDoubleClickCombo)
@@ -221,6 +222,7 @@ BOOL CMainWndSettingsDlg::OnInitDialog()
         m_hide_unit_chk.EnableWindow(FALSE);
     }
     ((CButton*)GetDlgItem(IDC_HIDE_PERCENTAGE_CHECK))->SetCheck(m_data.hide_percent);
+    ((CButton*)GetDlgItem(IDC_SMALL_UNIT_FONT_CHECK))->SetCheck(m_data.small_unit_font);
 
     if (m_text_disable)
     {
@@ -452,6 +454,12 @@ void CMainWndSettingsDlg::OnBnClickedHidePercentageCheck()
 {
     // TODO: 在此添加控件通知处理程序代码
     m_data.hide_percent = (((CButton*)GetDlgItem(IDC_HIDE_PERCENTAGE_CHECK))->GetCheck() != 0);
+}
+
+
+void CMainWndSettingsDlg::OnBnClickedSmallUnitFontCheck()
+{
+    m_data.small_unit_font = (((CButton*)GetDlgItem(IDC_SMALL_UNIT_FONT_CHECK))->GetCheck() != 0);
 }
 
 

@@ -139,6 +139,7 @@ void CTrafficMonitorApp::LoadConfig()
     m_main_wnd_data.speed_unit = static_cast<SpeedUnit>(ini.GetInt(_T("config"), _T("speed_unit"), 0));
     m_main_wnd_data.hide_unit = ini.GetBool(_T("config"), _T("hide_unit"), false);
     m_main_wnd_data.hide_percent = ini.GetBool(_T("config"), _T("hide_percent"), false);
+    m_main_wnd_data.small_unit_font = ini.GetBool(_T("config"), _T("small_unit_font"), false);
     m_main_wnd_data.double_click_action = static_cast<DoubleClickAction>(ini.GetInt(_T("config"), _T("double_click_action"), 0));
     m_main_wnd_data.double_click_exe = ini.GetString(L"config", L"double_click_exe", (theApp.m_system_dir + L"\\Taskmgr.exe").c_str());
 
@@ -221,6 +222,7 @@ void CTrafficMonitorApp::LoadConfig()
     m_taskbar_data.speed_unit = static_cast<SpeedUnit>(ini.GetInt(_T("task_bar"), _T("task_bar_speed_unit"), 0));
     m_taskbar_data.hide_unit = ini.GetBool(_T("task_bar"), _T("task_bar_hide_unit"), false);
     m_taskbar_data.hide_percent = ini.GetBool(_T("task_bar"), _T("task_bar_hide_percent"), false);
+    m_taskbar_data.small_unit_font = ini.GetBool(_T("task_bar"), _T("small_unit_font"), false);
     m_taskbar_data.value_right_align = ini.GetBool(_T("task_bar"), _T("value_right_align"), true);
     m_taskbar_data.horizontal_arrange = ini.GetBool(_T("task_bar"), _T("horizontal_arrange"), false);
     m_taskbar_data.show_status_bar = ini.GetBool(_T("task_bar"), _T("show_status_bar"), true);
@@ -346,6 +348,7 @@ void CTrafficMonitorApp::SaveConfig()
     ini.WriteInt(L"config", L"speed_unit", static_cast<int>(m_main_wnd_data.speed_unit));
     ini.WriteBool(L"config", L"hide_unit", m_main_wnd_data.hide_unit);
     ini.WriteBool(L"config", L"hide_percent", m_main_wnd_data.hide_percent);
+    ini.WriteBool(L"config", L"small_unit_font", m_main_wnd_data.small_unit_font);
     ini.WriteInt(L"config", L"double_click_action", static_cast<int>(m_main_wnd_data.double_click_action));
     ini.WriteString(L"config", L"double_click_exe", m_main_wnd_data.double_click_exe);
 
@@ -388,6 +391,7 @@ void CTrafficMonitorApp::SaveConfig()
     ini.WriteInt(L"task_bar", L"task_bar_speed_unit", static_cast<int>(m_taskbar_data.speed_unit));
     ini.WriteBool(L"task_bar", L"task_bar_hide_unit", m_taskbar_data.hide_unit);
     ini.WriteBool(L"task_bar", L"task_bar_hide_percent", m_taskbar_data.hide_percent);
+    ini.WriteBool(L"task_bar", L"small_unit_font", m_taskbar_data.small_unit_font);
     ini.WriteBool(L"task_bar", L"value_right_align", m_taskbar_data.value_right_align);
     ini.WriteBool(L"task_bar", L"horizontal_arrange", m_taskbar_data.horizontal_arrange);
     ini.WriteBool(L"task_bar", L"show_status_bar", m_taskbar_data.show_status_bar);

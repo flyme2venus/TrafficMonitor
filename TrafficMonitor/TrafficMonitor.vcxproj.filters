@@ -436,6 +436,9 @@
     <ClInclude Include="TaskbarItemOrderHelper.h">
       <Filter>源文件和头文件\公共的类\TaskbarItemOrderHelper</Filter>
     </ClInclude>
+    <ClInclude Include="ValueUnitText.h">
+      <Filter>源文件和头文件\公共的类</Filter>
+    </ClInclude>
     <ClInclude Include="SetItemOrderDlg.h">
       <Filter>源文件和头文件\对话框类\选项设置对话框\SetItemOrderDlg</Filter>
     </ClInclude>

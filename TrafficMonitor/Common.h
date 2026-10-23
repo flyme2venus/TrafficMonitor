@@ -48,6 +48,8 @@ public:
     返回值：转换后的字符串
     */
     static CString DataSizeToString(unsigned long long size, const PublicSettingData& cfg);
+    //同上，但是将数值和单位分开返回
+    static ValueUnitText DataSizeToValueUnit(unsigned long long size, const PublicSettingData& cfg);
 
     /*根据数据的大小转换成以KB、MB、GB为单位的字符串
     size：数据的字节数
@@ -55,15 +57,25 @@ public:
     返回值：转换后的字符串
     */
     static CString DataSizeToString(unsigned long long size, bool with_space = true);
+    //同上，但是将数值和单位分开返回
+    static ValueUnitText DataSizeToValueUnit(unsigned long long size, bool with_space = true);
 
     //将温度信息转换成字符串
     static CString TemperatureToString(float temperature, const PublicSettingData& cfg);
+    //同上，但是将数值和单位分开返回
+    static ValueUnitText TemperatureToValueUnit(float temperature, const PublicSettingData& cfg);
 
     //将使用率转换成字符串
     static CString UsageToString(int usage, const PublicSettingData& cfg);
+    //同上，但是将数值和单位分开返回
+    static ValueUnitText UsageToValueUnit(int usage, const PublicSettingData& cfg);
     static CString FreqToString(float usage, const PublicSettingData& cfg);
+    //同上，但是将数值和单位分开返回
+    static ValueUnitText FreqToValueUnit(float usage, const PublicSettingData& cfg);
     //static CString KBytesToString(unsigned int kb_size);
     static CString KBytesToString(unsigned __int64 kb_size);
+    //同上，但是将数值和单位分开返回
+    static ValueUnitText KBytesToValueUnit(unsigned __int64 kb_size);
 
     //返回两个FILETIME结构的时间差
     static __int64 CompareFileTime2(FILETIME time1, FILETIME time2);

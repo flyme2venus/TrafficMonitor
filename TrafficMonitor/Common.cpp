@@ -222,7 +222,11 @@ const char* CCommon::GetFileContent(const wchar_t* file_path, size_t& length, bo
 
 CString CCommon::DataSizeToString(unsigned long long size, const PublicSettingData& cfg)
 {
-    //CString str;
+    return DataSizeToValueUnit(size, cfg).ToString();
+}
+
+ValueUnitText CCommon::DataSizeToValueUnit(unsigned long long size, const PublicSettingData& cfg)
+{
     CString value_str, unit_str;
     if (!cfg.unit_byte)     //如果使用比特(bit)为单位，则数值乘以8
     {
@@ -313,79 +317,125 @@ CString CCommon::DataSizeToString(unsigned long long size, const PublicSettingDa
         }
         break;
     }
-    CString str;
+    //数值和单位之间的空格归到单位的前面，保证 value + unit 与原来完全一致
+    CString str_unit;
     if (cfg.separate_value_unit_with_space && !cfg.hide_unit)
-        str = value_str + _T(' ') + unit_str;
+        str_unit = CString(_T(' ')) + unit_str;
     else
-        str = value_str + unit_str;
+        str_unit = unit_str;
     if (!cfg.unit_byte)
     {
         if (cfg.speed_short_mode && !cfg.hide_unit)
-            str += _T('b');     //如果使用比特(bit)为单位，即使设置了网速简洁模式，也将“b”显示出来
+            str_unit += _T('b');     //如果使用比特(bit)为单位，即使设置了网速简洁模式，也将“b”显示出来
         else
-            str.Replace(_T('B'), _T('b'));  //如果使用比特(bit)为单位，将B替换成b
+            str_unit.Replace(_T('B'), _T('b'));  //如果使用比特(bit)为单位，将B替换成b
     }
-    return str;
+    ValueUnitText value_unit_text;
+    value_unit_text.value = value_str;
+    value_unit_text.unit = str_unit;
+    return value_unit_text;
 }
 
 CString CCommon::DataSizeToString(unsigned long long size, bool with_space)
 {
-    CString str;
+    return DataSizeToValueUnit(size, with_space).ToString();
+}
+
+ValueUnitText CCommon::DataSizeToValueUnit(unsigned long long size, bool with_space)
+{
+    CString value_str, unit_str;
     if (size < 1024 * 10)                   //10KB以下以KB为单位，保留2位小数
-        str.Format(_T("%.2f KB"), size / 1024.0);
+    {
+        value_str.Format(_T("%.2f"), size / 1024.0);
+        unit_str = _T("KB");
+    }
     else if (size < 1024 * 1024)            //1MB以下以KB为单位，保留1位小数
-        str.Format(_T("%.1f KB"), size / 1024.0);
+    {
+        value_str.Format(_T("%.1f"), size / 1024.0);
+        unit_str = _T("KB");
+    }
     else if (size < 1024 * 1024 * 1024)     //1GB以下以MB为单位，保留2位小数
-        str.Format(_T("%.2f MB"), size / 1024.0 / 1024.0);
+    {
+        value_str.Format(_T("%.2f"), size / 1024.0 / 1024.0);
+        unit_str = _T("MB");
+    }
     else if (size < 1024ll * 1024 * 1024 * 1024)
-        str.Format(_T("%.2f GB"), size / 1024.0 / 1024.0 / 1024.0);
+    {
+        value_str.Format(_T("%.2f"), size / 1024.0 / 1024.0 / 1024.0);
+        unit_str = _T("GB");
+    }
     else
-        str.Format(_T("%.2f TB"), size / 1024.0 / 1024.0 / 1024.0 / 1024.0);
-    if (!with_space)
-        str.Remove(_T(' '));
-    return str;
+    {
+        value_str.Format(_T("%.2f"), size / 1024.0 / 1024.0 / 1024.0 / 1024.0);
+        unit_str = _T("TB");
+    }
+    ValueUnitText value_unit_text;
+    value_unit_text.value = value_str;
+    if (with_space)
+        value_unit_text.unit = CString(_T(' ')) + unit_str;
+    else
+        value_unit_text.unit = unit_str;
+    return value_unit_text;
 }
 
 CString CCommon::TemperatureToString(float temperature, const PublicSettingData& cfg)
 {
-    CString str_val;
+    return TemperatureToValueUnit(temperature, cfg).ToString();
+}
+
+ValueUnitText CCommon::TemperatureToValueUnit(float temperature, const PublicSettingData& cfg)
+{
+    ValueUnitText value_unit_text;
     if (temperature <= 0)
-        str_val = _T("--");
+        value_unit_text.value = _T("--");
     else
-        str_val.Format(_T("%d"), static_cast<int>(temperature));
+        value_unit_text.value.Format(_T("%d"), static_cast<int>(temperature));
     if (cfg.separate_value_unit_with_space)
-        str_val += _T(' ');
-    str_val += _T("°C");
-    return str_val;
+        value_unit_text.unit = _T(" °C");
+    else
+        value_unit_text.unit = _T("°C");
+    return value_unit_text;
 }
 
 CString CCommon::UsageToString(int usage, const PublicSettingData& cfg)
 {
-    CString str_val;
+    return UsageToValueUnit(usage, cfg).ToString();
+}
+
+ValueUnitText CCommon::UsageToValueUnit(int usage, const PublicSettingData& cfg)
+{
+    ValueUnitText value_unit_text;
     if (usage < 0)
-        str_val = _T("--");
+        value_unit_text.value = _T("--");
     else
-        str_val.Format(_T("%d"), usage);
+        value_unit_text.value.Format(_T("%d"), usage);
     if (!cfg.hide_percent)
     {
         if (cfg.separate_value_unit_with_space)
-            str_val += _T(' ');
-        str_val += _T('%');
+            value_unit_text.unit = _T(" %");
+        else
+            value_unit_text.unit = _T("%");
     }
-    return str_val;
+    return value_unit_text;
 }
 
 CString CCommon::FreqToString(float freq, const PublicSettingData& cfg)
 {
-    CString str_val;
+    return FreqToValueUnit(freq, cfg).ToString();
+}
+
+ValueUnitText CCommon::FreqToValueUnit(float freq, const PublicSettingData& cfg)
+{
+    ValueUnitText value_unit_text;
     if (freq < 0)
-        str_val = _T("--");
+        value_unit_text.value = _T("--");
     else
-        str_val.Format(_T("%.2f"), freq);
+        value_unit_text.value.Format(_T("%.2f"), freq);
     if (cfg.separate_value_unit_with_space)
-        str_val += _T(' ');
-    str_val += _T("GHz");
-    return str_val;
+        value_unit_text.unit = _T(" GHz");
+    else
+        value_unit_text.unit = _T("GHz");
+    return value_unit_text;
 }
 //CString CCommon::KBytesToString(unsigned int kb_size)
 //{
@@ -403,16 +453,33 @@ CString CCommon::FreqToString(float freq, const PublicSettingData& cfg)
 
 CString CCommon::KBytesToString(unsigned __int64 kb_size)
 {
-    CString k_bytes_str;
+    return KBytesToValueUnit(kb_size).ToString();
+}
+
+ValueUnitText CCommon::KBytesToValueUnit(unsigned __int64 kb_size)
+{
+    ValueUnitText value_unit_text;
     if (kb_size < 1024)
-        k_bytes_str.Format(_T("%d KB"), kb_size);
+    {
+        value_unit_text.value.Format(_T("%d"), kb_size);
+        value_unit_text.unit = _T(" KB");
+    }
     else if (kb_size < 1024 * 1024)
-        k_bytes_str.Format(_T("%.2f MB"), kb_size / 1024.0);
+    {
+        value_unit_text.value.Format(_T("%.2f"), kb_size / 1024.0);
+        value_unit_text.unit = _T(" MB");
+    }
     else if (kb_size < 1024 * 1024 * 1024)
-        k_bytes_str.Format(_T("%.2f GB"), kb_size / 1024.0 / 1024.0);
+    {
+        value_unit_text.value.Format(_T("%.2f"), kb_size / 1024.0 / 1024.0);
+        value_unit_text.unit = _T(" GB");
+    }
     else
-        k_bytes_str.Format(_T("%.2f TB"), kb_size / 1024.0 / 1024.0 / 1024.0);
-    return k_bytes_str;
+    {
+        value_unit_text.value.Format(_T("%.2f"), kb_size / 1024.0 / 1024.0 / 1024.0);
+        value_unit_text.unit = _T(" TB");
+    }
+    return value_unit_text;
 }
 
 __int64 CCommon::CompareFileTime2(FILETIME time1, FILETIME time2)

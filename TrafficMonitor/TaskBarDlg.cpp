@@ -306,11 +306,22 @@ void CTaskBarDlg::DrawDisplayItem(IDrawCommon& drawer, DisplayItem type, CRect r
             str_label.pop_back();
         str_label += L' ';
 
-        CString str_value = CommonDisplayItem(type).GetItemValueText(false);
+        ValueUnitText value_unit_text = CommonDisplayItem(type).GetItemValueUnitText(false);
 
         m_pDC->SelectObject(&m_font);
         int cur_label_width = m_pDC->GetTextExtent(str_label.c_str()).cx;
-        int val_width = m_pDC->GetTextExtent(str_value).cx;
+        int val_width{};
+        if (IsSmallUnitFontEnable(value_unit_text))
+        {
+            val_width = m_pDC->GetTextExtent(value_unit_text.value).cx;
+            m_pDC->SelectObject(&m_unit_font);
+            val_width += m_pDC->GetTextExtent(value_unit_text.unit).cx;
+            m_pDC->SelectObject(&m_font);
+        }
+        else
+        {
+            val_width = m_pDC->GetTextExtent(value_unit_text.ToString()).cx;
+        }
         int total_w = cur_label_width + val_width;
 
         // 箭头与网速整体居中于任务栏列宽内
@@ -322,7 +333,7 @@ void CTaskBarDlg::DrawDisplayItem(IDrawCommon& drawer, DisplayItem type, CRect r
         rect_value.SetRect(rect_label.right, rect.top, rect.right, rect.bottom);
 
         drawer.DrawWindowText(rect_label, str_label.c_str(), label_color, IDrawCommon::Alignment::LEFT);
-        drawer.DrawWindowText(rect_value, str_value, text_color, IDrawCommon::Alignment::LEFT);
+        DrawValueWithUnit(drawer, value_unit_text, rect_value, text_color, IDrawCommon::Alignment::LEFT);
         return;
     }
 
@@ -330,6 +341,7 @@ void CTaskBarDlg::DrawDisplayItem(IDrawCommon& drawer, DisplayItem type, CRect r
     if (label_width > 0)
     {
         wstring str_label = theApp.m_taskbar_data.disp_str.GetConst(type);
+        drawer.SetFont(&m_font);
         drawer.DrawWindowText(rect_label, str_label.c_str(), label_color, (vertical ? IDrawCommon::Alignment::CENTER : IDrawCommon::Alignment::LEFT));
     }
 
@@ -337,8 +349,9 @@ void CTaskBarDlg::DrawDisplayItem(IDrawCommon& drawer, DisplayItem type, CRect r
     IDrawCommon::Alignment value_alignment{ theApp.m_taskbar_data.value_right_align ? IDrawCommon::Alignment::RIGHT : IDrawCommon::Alignment::LEFT };      //数值的对齐方式
     if (vertical)
         value_alignment = IDrawCommon::Alignment::CENTER;
-    CString str_value = CommonDisplayItem(type).GetItemValueText(false);
-    drawer.DrawWindowText(rect_value, str_value, text_color, value_alignment);
+    drawer.SetFont(&m_font);
+    ValueUnitText value_unit_text = CommonDisplayItem(type).GetItemValueUnitText(false);
+    DrawValueWithUnit(drawer, value_unit_text, rect_value, text_color, value_alignment);
 }
 
 void CTaskBarDlg::DrawPluginItem(IDrawCommon& drawer, IPluginItem* item, CRect rect, int label_width, bool vertical)
@@ -758,13 +771,110 @@ CString CTaskBarDlg::GetMouseTipsInfo()
 
 void CTaskBarDlg::SetTextFont()
 {
+    CreateFonts();
+}
+
+void CTaskBarDlg::CreateFonts()
+{
     //如果m_font已经关联了一个字体资源对象，则释放它
     if (m_font.m_hObject)
     {
         m_font.DeleteObject();
     }
+    if (m_unit_font.m_hObject)
+    {
+        m_unit_font.DeleteObject();
+    }
     //创建新的字体
     theApp.m_taskbar_data.font.Create(m_font, GetDPI());
+
+    //创建单位字体
+    m_unit_font_offset = 0;
+    FontInfo unit_info{ theApp.m_taskbar_data.font };
+    unit_info.size = UnitFontSize(unit_info.size);
+    if (unit_info.size < theApp.m_taskbar_data.font.size)    //只有字号确实变小时才需要单独的字体
+    {
+        unit_info.Create(m_unit_font, GetDPI());
+
+        //计算基线对齐所需的垂直偏移量
+        HDC hDC = ::GetDC(HWND_DESKTOP);
+        TEXTMETRIC tm_value{}, tm_unit{};
+        HFONT h_old_font = static_cast<HFONT>(::SelectObject(hDC, m_font.GetSafeHandle()));
+        ::GetTextMetrics(hDC, &tm_value);
+        ::SelectObject(hDC, m_unit_font.GetSafeHandle());
+        ::GetTextMetrics(hDC, &tm_unit);
+        ::SelectObject(hDC, h_old_font);
+        ::ReleaseDC(HWND_DESKTOP, hDC);
+
+        int value_center = tm_value.tmAscent - tm_value.tmDescent;
+        int unit_center = tm_unit.tmAscent - tm_unit.tmDescent;
+        m_unit_font_offset = (value_center - unit_center) / 2;
+    }
+}
+
+bool CTaskBarDlg::IsSmallUnitFontEnable(const ValueUnitText& value_unit_text) const
+{
+    return theApp.m_taskbar_data.small_unit_font
+        && value_unit_text.HasUnit()
+        && m_unit_font.GetSafeHandle() != nullptr;
+}
+
+CRect CTaskBarDlg::UnitTextRect(const CRect& rect) const
+{
+    CRect rect_unit{ rect };
+    rect_unit.OffsetRect(0, m_unit_font_offset);
+    return rect_unit;
+}
+
+int CTaskBarDlg::DrawValueWithUnit(IDrawCommon& drawer, const ValueUnitText& value_unit_text, CRect rect, COLORREF color, IDrawCommon::Alignment align)
+{
+    //注：这里用m_pDC而不是drawer.GetTextWidth来测量，因为D2D渲染方式下IDrawCommon::GetTextWidth没有实现（返回0）
+    auto measure_width = [this](CFont& font, const CString& str)->int
+        {
+            m_pDC->SelectObject(&font);
+            return m_pDC->GetTextExtent(str).cx;
+        };
+
+    //没有开启“单位小字号”或者没有单位时，直接一次性绘制
+    if (!IsSmallUnitFontEnable(value_unit_text))
+    {
+        int text_width = measure_width(m_font, value_unit_text.ToString());
+        drawer.SetFont(&m_font);
+        drawer.DrawWindowText(rect, value_unit_text.ToString(), color, align);
+        return text_width;
+    }
+
+    //测量数值和单位的宽度
+    int value_width = measure_width(m_font, value_unit_text.value);
+    int unit_width = measure_width(m_unit_font, value_unit_text.unit);
+    m_pDC->SelectObject(&m_font);
+    int total_width = value_width + unit_width;
+
+    //放不下时退回到一次性绘制，避免文字溢出
+    if (total_width >= rect.Width())
+    {
+        drawer.SetFont(&m_font);
+        drawer.DrawWindowText(rect, value_unit_text.ToString(), color, align);
+        return total_width;
+    }
+
+    //计算数值的起始位置
+    int value_x{ rect.left };
+    if (align == IDrawCommon::Alignment::RIGHT)
+        value_x = rect.right - total_width;
+    else if (align == IDrawCommon::Alignment::CENTER)
+        value_x = rect.left + (rect.Width() - total_width) / 2;
+    int unit_x = value_x + value_width;
+
+    //绘制数值
+    drawer.SetFont(&m_font);
+    drawer.DrawWindowText(CRect(value_x, rect.top, unit_x, rect.bottom), value_unit_text.value, color, IDrawCommon::Alignment::LEFT);
+    //绘制单位（使用较小字号，并做基线对齐）
+    drawer.SetFont(&m_unit_font);
+    drawer.DrawWindowText(UnitTextRect(CRect(unit_x, rect.top, rect.right, rect.bottom)), value_unit_text.unit, color, IDrawCommon::Alignment::LEFT);
+    //恢复默认字体，后面的绘制还要用到
+    drawer.SetFont(&m_font);
+    return total_width;
 }
 
 void CTaskBarDlg::ApplySettings()
@@ -815,8 +925,20 @@ void CTaskBarDlg::CalculateWindowSize()
             //标签宽度
             item_widths[*iter].label_width = m_pDC->GetTextExtent(theApp.m_taskbar_data.disp_str.GetConst(*iter).c_str()).cx;
             //数值宽度
-            CString sample_str = iter->GetItemValueSampleText(false);
-            item_widths[*iter].value_width = m_pDC->GetTextExtent(sample_str).cx;
+            ValueUnitText sample_text = iter->GetItemValueSampleUnitText(false);
+            if (IsSmallUnitFontEnable(sample_text))
+            {
+                //数值和单位使用不同的字体，要分别测量
+                int value_width = m_pDC->GetTextExtent(sample_text.value).cx;
+                m_pDC->SelectObject(&m_unit_font);
+                int unit_width = m_pDC->GetTextExtent(sample_text.unit).cx;
+                m_pDC->SelectObject(&m_font);
+                item_widths[*iter].value_width = value_width + unit_width;
+            }
+            else
+            {
+                item_widths[*iter].value_width = m_pDC->GetTextExtent(sample_text.ToString()).cx;
+            }
         }
     }
 

@@ -63,6 +63,7 @@ public:
     virtual BOOL PreTranslateMessage(MSG* pMsg);
     virtual void OnOK();
     afx_msg void OnBnClickedHidePercentageCheck();
+    afx_msg void OnBnClickedSmallUnitFontCheck();
 protected:
     afx_msg LRESULT OnStaticClicked(WPARAM wParam, LPARAM lParam);
 public:

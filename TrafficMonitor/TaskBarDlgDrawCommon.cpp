@@ -586,42 +586,68 @@ void CTaskBarDlgDrawCommonWindowSupport::RequestD3D10Device1Recreate()
 
 void CTaskBarDlgDrawCommonWindowSupport::CDWriteHelper::SetFont(HFONT h_font)
 {
-    if (m_h_last_font != h_font)
+    //先在已缓存的字体中查找
+    for (int i = 0; i < FONT_ENTRY_COUNT; i++)
     {
-        ::GetObject(h_font, sizeof(m_last_font), &m_last_font);
-
-        auto abs_font_height_f =
-            static_cast<float>(std::abs(m_last_font.lfHeight));
-        auto dwrite_font_weight =
-            static_cast<DWRITE_FONT_WEIGHT>(m_last_font.lfWeight);
-        auto dwrite_font_style =
-            m_last_font.lfItalic ? DWRITE_FONT_STYLE_ITALIC : DWRITE_FONT_STYLE_NORMAL;
-        ThrowIfFailed<CDWriteException>(
-            CDWriteSupport::GetFactory()->CreateTextFormat(
-                theApp.m_taskbar_data.font.name,
-                NULL,
-                dwrite_font_weight,
-                dwrite_font_style,
-                DWRITE_FONT_STRETCH_NORMAL,
-                abs_font_height_f,
-                L"",
-                &m_p_text_format),
-            TRAFFICMONITOR_ERROR_STR("Create D2D1 Text Format failed."));
-
-        m_h_last_font = h_font;
+        if (m_font_entries[i].h_font == h_font && h_font != nullptr)
+        {
+            m_current_index = i;
+            return;
+        }
     }
+
+    //没有找到，则创建一个新的TextFormat，并替换当前槽位
+    int index = m_current_index;
+    //如果当前槽位为空，则使用空槽位
+    if (m_font_entries[index].h_font != nullptr)
+    {
+        //优先使用另一个空槽位
+        for (int i = 0; i < FONT_ENTRY_COUNT; i++)
+        {
+            if (m_font_entries[i].h_font == nullptr)
+            {
+                index = i;
+                break;
+            }
+        }
+    }
+
+    FontEntry& entry = m_font_entries[index];
+    ::GetObject(h_font, sizeof(entry.log_font), &entry.log_font);
+
+    auto abs_font_height_f =
+        static_cast<float>(std::abs(entry.log_font.lfHeight));
+    auto dwrite_font_weight =
+        static_cast<DWRITE_FONT_WEIGHT>(entry.log_font.lfWeight);
+    auto dwrite_font_style =
+        entry.log_font.lfItalic ? DWRITE_FONT_STYLE_ITALIC : DWRITE_FONT_STYLE_NORMAL;
+    entry.p_text_format.Reset();
+    ThrowIfFailed<CDWriteException>(
+        CDWriteSupport::GetFactory()->CreateTextFormat(
+            theApp.m_taskbar_data.font.name,
+            NULL,
+            dwrite_font_weight,
+            dwrite_font_style,
+            DWRITE_FONT_STRETCH_NORMAL,
+            abs_font_height_f,
+            L"",
+            &entry.p_text_format),
+        TRAFFICMONITOR_ERROR_STR("Create D2D1 Text Format failed."));
+
+    entry.h_font = h_font;
+    m_current_index = index;
 }
 
 auto CTaskBarDlgDrawCommonWindowSupport::CDWriteHelper::GetFont() noexcept
     -> HFONT
 {
-    return m_h_last_font;
+    return m_font_entries[m_current_index].h_font;
 }
 
 auto CTaskBarDlgDrawCommonWindowSupport::CDWriteHelper::GetTextFormat() noexcept
     -> ComPtr<IDWriteTextFormat>
 {
-    return m_p_text_format;
+    return m_font_entries[m_current_index].p_text_format;
 }
 
 void CD2D1DeviceContextWindowSupport::CD2D1DeviceContextHelper::Reinitialize()

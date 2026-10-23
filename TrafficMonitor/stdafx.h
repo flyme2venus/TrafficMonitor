@@ -111,8 +111,6 @@ using std::ofstream;
 #define BACKGROUND_MASK_S L"\\background_mask.bmp"
 #define BACKGROUND_MASK_L L"\\background_mask_l.bmp"
 
-#define MIN_FONT_SIZE 5
-#define MAX_FONT_SIZE 72
 
 #define SAFE_DELETE(p) do \
 {\

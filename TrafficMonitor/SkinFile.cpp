@@ -64,26 +64,130 @@ CSkinFile::Layout CSkinFile::LayoutFromXmlNode(tinyxml2::XMLElement* ele)
     return layout;
 }
 
-void CSkinFile::DrawSkinText(IDrawCommon& drawer, DrawStr draw_str, CRect rect, COLORREF color, Alignment align)
+void CSkinFile::DrawSkinText(IDrawCommon& drawer, const DrawStr& draw_str, CRect rect, COLORREF color, Alignment align) const
 {
-    int text_width = drawer.GetTextWidth(draw_str.GetStr());
-    //标签和数值两端对齐
-    if (align == Alignment::SIDE && text_width < rect.Width())      //只有文本宽度小于矩形的宽度时才使用两端对齐
+    //SetFont的参数不是const的，而这里的字体对象只是用来绘制，不需要修改
+    CFont& value_font = const_cast<CFont&>(m_font);
+    CFont& unit_font = const_cast<CFont&>(m_unit_font);
+
+    //是否使用小字号绘制单位
+    bool use_small_unit = theApp.m_main_wnd_data.small_unit_font
+        && !draw_str.unit.IsEmpty() && unit_font.GetSafeHandle() != nullptr;
+
+    if (!use_small_unit)
     {
-        //绘制标签
-        drawer.DrawWindowText(rect, draw_str.label, color, IDrawCommon::Alignment::LEFT);
-        //绘制数值
-        drawer.DrawWindowText(rect, draw_str.value, color, IDrawCommon::Alignment::RIGHT);
+        int text_width = drawer.GetTextWidth(draw_str.GetStr());
+        //标签和数值两端对齐
+        if (align == Alignment::SIDE && text_width < rect.Width())      //只有文本宽度小于矩形的宽度时才使用两端对齐
+        {
+            //绘制标签
+            drawer.DrawWindowText(rect, draw_str.label, color, IDrawCommon::Alignment::LEFT);
+            //绘制数值
+            drawer.DrawWindowText(rect, draw_str.value, color, IDrawCommon::Alignment::RIGHT);
+        }
+        else
+        {
+            IDrawCommon::Alignment text_align = IDrawCommon::Alignment::LEFT;
+            if (align == Alignment::RIGHT)
+                text_align = IDrawCommon::Alignment::RIGHT;
+            else if (align == Alignment::CENTER)
+                text_align = IDrawCommon::Alignment::CENTER;
+            drawer.DrawWindowText(rect, draw_str.GetStr(), color, text_align);
+        }
+        return;
     }
-    else
+
+    //分别测量标签、数值和单位的宽度（测量前必须先切换到对应的字体）
+    drawer.SetFont(&value_font);
+    int label_width = draw_str.label.IsEmpty() ? 0 : drawer.GetTextWidth(draw_str.label);
+    int value_width = drawer.GetTextWidth(draw_str.value);
+    drawer.SetFont(&unit_font);
+    int unit_width = drawer.GetTextWidth(draw_str.unit);
+    int total_width = label_width + value_width + unit_width;
+
+    //放不下时退回到原来的绘制方式，避免文字溢出
+    if (total_width >= rect.Width())
     {
-        IDrawCommon::Alignment text_align = IDrawCommon::Alignment::LEFT;
-        if (align == Alignment::RIGHT)
-            text_align = IDrawCommon::Alignment::RIGHT;
-        else if (align == Alignment::CENTER)
-            text_align = IDrawCommon::Alignment::CENTER;
-        drawer.DrawWindowText(rect, draw_str.GetStr(), color, text_align);
+        drawer.SetFont(&value_font);
+        drawer.DrawWindowText(rect, draw_str.GetStr(), color,
+            align == Alignment::RIGHT ? IDrawCommon::Alignment::RIGHT :
+            (align == Alignment::CENTER ? IDrawCommon::Alignment::CENTER : IDrawCommon::Alignment::LEFT));
+        return;
     }
+
+    //计算各段文本的起始位置
+    int label_x{ rect.left };
+    int value_x{};
+    switch (align)
+    {
+    case Alignment::RIGHT:
+        value_x = rect.right - value_width - unit_width;
+        label_x = value_x - label_width;
+        break;
+    case Alignment::CENTER:
+        label_x = rect.left + (rect.Width() - total_width) / 2;
+        value_x = label_x + label_width;
+        break;
+    case Alignment::SIDE:       //标签靠左，数值和单位靠右
+        value_x = rect.right - value_width - unit_width;
+        break;
+    case Alignment::LEFT:
+    default:
+        value_x = rect.left + label_width;
+        break;
+    }
+    int unit_x = value_x + value_width;
+
+    //绘制标签（没有标签时不绘制）
+    if (!draw_str.label.IsEmpty())
+    {
+        drawer.SetFont(&value_font);
+        drawer.DrawWindowText(CRect(label_x, rect.top, value_x, rect.bottom), draw_str.label, color, IDrawCommon::Alignment::LEFT);
+    }
+    //绘制数值
+    drawer.SetFont(&value_font);
+    drawer.DrawWindowText(CRect(value_x, rect.top, unit_x, rect.bottom), draw_str.value, color, IDrawCommon::Alignment::LEFT);
+    //绘制单位（使用较小字号，并做基线对齐）
+    drawer.SetFont(&unit_font);
+    drawer.DrawWindowText(UnitTextRect(CRect(unit_x, rect.top, unit_x + unit_width, rect.bottom)), draw_str.unit, color, IDrawCommon::Alignment::LEFT);
+
+    //恢复默认字体，后面的插件自绘会直接使用DC的字体
+    drawer.SetFont(&value_font);
+}
+
+void CSkinFile::CreateUnitFont(const FontInfo& font_info)
+{
+    m_unit_font_offset = 0;
+    if (m_unit_font.GetSafeHandle() != nullptr)
+        m_unit_font.DeleteObject();
+
+    FontInfo unit_info = font_info;
+    unit_info.size = UnitFontSize(font_info.size);
+    if (unit_info.size >= font_info.size)       //字号没有变小，则不需要单独的单位字体
+        return;
+    unit_info.Create(m_unit_font, theApp.GetDpi());
+
+    //计算基线对齐所需的垂直偏移量。文本在矩形内垂直居中，两种字号的高度不同，
+    //因此需要把单位文本的矩形向下移动，使两者的基线对齐
+    HDC hDC = ::GetDC(HWND_DESKTOP);
+    TEXTMETRIC tm_value{}, tm_unit{};
+    HFONT h_old_font = static_cast<HFONT>(::SelectObject(hDC, m_font.GetSafeHandle()));
+    ::GetTextMetrics(hDC, &tm_value);
+    ::SelectObject(hDC, m_unit_font.GetSafeHandle());
+    ::GetTextMetrics(hDC, &tm_unit);
+    ::SelectObject(hDC, h_old_font);
+    ::ReleaseDC(HWND_DESKTOP, hDC);
+
+    int value_center = tm_value.tmAscent - tm_value.tmDescent;
+    int unit_center = tm_unit.tmAscent - tm_unit.tmDescent;
+    m_unit_font_offset = (value_center - unit_center) / 2;
+}
+
+CRect CSkinFile::UnitTextRect(const CRect& rect) const
+{
+    CRect rect_unit{ rect };
+    rect_unit.OffsetRect(0, m_unit_font_offset);
+    return rect_unit;
 }
 
 bool CSkinFile::Load(const wstring& skin_name)
@@ -114,17 +218,15 @@ bool CSkinFile::Load(const wstring& skin_name)
         m_font.DeleteObject();
 
     //创建字体对象
-    if (!m_skin_info.font_info.name.IsEmpty() && m_skin_info.font_info.size > 0)
+    FontInfo font_info{ m_skin_info.font_info };
+    if (font_info.name.IsEmpty() || font_info.size <= 0)
     {
-        m_skin_info.font_info.Create(m_font, theApp.GetDpi());
-    }
-    else
-    {
-        FontInfo font_info;
         font_info.name = theApp.m_str_table.GetLanguageInfo().default_font_name.c_str();
         font_info.size = 10;
-        font_info.Create(m_font, theApp.GetDpi());
     }
+    font_info.Create(m_font, theApp.GetDpi());
+    //创建单位字体（用于“单位小字号”显示）
+    CreateUnitFont(font_info);
 
     wstring path_dir = file_path_helper.GetDir();
 
@@ -407,6 +509,8 @@ void CSkinFile::SetSettingData(const SkinSettingData& setting_data)
         if (m_font.m_hObject)   //如果m_font已经关联了一个字体资源对象，则释放它
             m_font.DeleteObject();
         setting_data.font.Create(m_font, theApp.GetDpi());
+        //同时重新创建单位字体
+        CreateUnitFont(setting_data.font);
     }
     m_setting_data = setting_data;
 }
@@ -454,7 +558,9 @@ void CSkinFile::DrawPreview(CDC* pDC, CRect rect)
             if (iter->IsPlugin())
                 continue;
             DrawStr draw_str;
-            draw_str.value = CommonDisplayItem(iter->ItemType()).GetItemValueSampleText(true);
+            ValueUnitText value_unit = CommonDisplayItem(iter->ItemType()).GetItemValueSampleUnitText(true);
+            draw_str.value = value_unit.value;
+            draw_str.unit = value_unit.unit;
             if (!m_layout_info.no_label)
             {
                 if (m_setting_data.disp_str.IsInvalid())
@@ -623,7 +729,9 @@ void CSkinFile::DrawItemsInfo(IDrawCommon& drawer, Layout& layout, CFont& font) 
     {
         if (!m_layout_info.no_label)
             map_str[display_item].label = theApp.m_main_wnd_data.disp_str.GetConst(display_item).c_str();
-        map_str[display_item].value = CommonDisplayItem(display_item).GetItemValueText(true);
+        ValueUnitText value_unit = CommonDisplayItem(display_item).GetItemValueUnitText(true);
+        map_str[display_item].value = value_unit.value;
+        map_str[display_item].unit = value_unit.unit;
     }
 
     //获取文本颜色

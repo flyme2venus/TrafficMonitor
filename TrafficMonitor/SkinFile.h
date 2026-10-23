@@ -130,13 +130,21 @@ private:
     {
         CString label;
         CString value;
+        CString unit;       //数值后面的单位，仅当开启了“单位小字号”时才单独绘制
         CString GetStr() const
         {
-            return label + value;
+            return label + value + unit;
         }
     };
 
-    static void DrawSkinText(IDrawCommon& drawer, DrawStr draw_str, CRect rect, COLORREF color, Alignment align);
+    //绘制一项的标签、数值和单位。开启“单位小字号”时单位用较小的字体绘制
+    void DrawSkinText(IDrawCommon& drawer, const DrawStr& draw_str, CRect rect, COLORREF color, Alignment align) const;
+
+    //根据当前字体创建单位字体，并计算单位文本相对于数值文本的垂直偏移量（用于基线对齐）
+    void CreateUnitFont(const FontInfo& font_info);
+
+    //获取绘制单位文本时使用的矩形（在rect的基础上做基线对齐的垂直偏移）
+    CRect UnitTextRect(const CRect& rect) const;
 
     //绘制主界面中除背景图外所有显示项目
     void DrawItemsInfo(IDrawCommon& drawer, Layout& layout, CFont& font) const;
@@ -148,6 +156,8 @@ private:
     std::map<std::string, std::string> m_plugin_map;  //插件名称与xml节点名称的映射关系。key是xml节点名称，value是插件ID
 
     CFont m_font;
+    CFont m_unit_font;              //单位使用的较小字体
+    int m_unit_font_offset{};       //单位文本相对于数值文本的垂直偏移量（用于和数值基线对齐）
     CImage m_background_s;
     CImage m_background_l;
     bool m_is_png{};
