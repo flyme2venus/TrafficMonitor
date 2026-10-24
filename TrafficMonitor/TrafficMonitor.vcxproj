@@ -1047,4 +1047,21 @@
       <UserProperties RESOURCE_FILE="TrafficMonitor.rc" />
     </VisualStudio>
   </ProjectExtensions>
+
+  <!-- 本机构建后自动部署：目标目录配置在 TrafficMonitor.local.props 中（该文件不纳入版本控制）。
+       未提供该文件时不执行任何操作，因此在 CI 或其他机器上构建不受影响。 -->
+  <Import Project="TrafficMonitor.local.props" Condition="Exists('TrafficMonitor.local.props')" />
+  <Target Name="DeployToLocalFolder" AfterTargets="Build"
+          Condition="'$(Configuration)' == 'Release (lite)' and '$(TrafficMonitorDeployDir)' != ''">
+    <!-- Retries=0：目标程序正在运行时只尝试一次，避免默认 10 次重试造成构建长时间等待；
+         复制失败只产生警告，不会让构建失败 -->
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(TrafficMonitorDeployDir)"
+          ContinueOnError="true" Retries="0">
+      <Output TaskParameter="CopiedFiles" ItemName="_DeployedToLocalFolder" />
+    </Copy>
+    <Message Importance="high" Condition="'@(_DeployedToLocalFolder)' != ''"
+             Text="已复制到 $(TrafficMonitorDeployDir)" />
+    <Warning Condition="'@(_DeployedToLocalFolder)' == ''"
+             Text="未能复制到 $(TrafficMonitorDeployDir)：目标程序可能正在运行，请关闭后重新构建。" />
+  </Target>
 </Project>

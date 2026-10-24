@@ -300,3 +300,6 @@ __pycache__/
 !/TrafficMonitor/language/*.ini
 *.diagsession
 enc_temp*
+
+# TrafficMonitor 本机构建配置（含个人路径，不入库）
+TrafficMonitor/TrafficMonitor.local.props
