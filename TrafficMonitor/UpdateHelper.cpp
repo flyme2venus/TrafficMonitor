@@ -23,44 +23,30 @@ bool CUpdateHelper::CheckForUpdate()
     wstring version_info;
     //注：本仓库是上游 TrafficMonitor 的个人定制版，更新信息统一从本仓库获取，
     //避免把用户引导到上游版本（上游版本不包含本仓库的定制功能）。
-    //“更新源”选项仍然保留（GitHub/Gitee），但两者都读取同一个更新信息文件：
-    //本仓库没有 Gitee 镜像，因此 Gitee 源也指向本仓库的 GitHub 地址。
-    const wchar_t* update_info_url = L"https://raw.githubusercontent.com/flyme2venus/TrafficMonitor/master/version_utf8.info";
-    //使用GitHub更新源
-    if (m_update_source == UpdateSource::GitHubSource)
+    //“更新源”选项仍然保留（GitHub/Gitee），但两者都读取同一份更新信息：
+    //本仓库没有 Gitee 镜像，清单中的 GitHub 和 Gitee 两节内容相同。
+    //
+    //国内网络通常无法访问 raw.githubusercontent.com，因此优先使用 jsDelivr 的
+    //GitHub 镜像，读取失败时再回退到 raw.githubusercontent.com。
+    //清单中的下载链接仍然只允许 GitHub/Gitee 域名（见 ParseUpdateInfo 中的校验）。
+    static const wchar_t* UPDATE_INFO_URLS[] = {
+        L"https://cdn.jsdelivr.net/gh/flyme2venus/TrafficMonitor@master/version_utf8.info",
+        L"https://raw.githubusercontent.com/flyme2venus/TrafficMonitor/master/version_utf8.info",
+    };
+
+    bool succeed{ false };
+    for (const wchar_t* url : UPDATE_INFO_URLS)
     {
-        if (CCommon::GetURL(update_info_url, version_info, true))     //获取版本信息
+        if (CCommon::GetURL(url, version_info, true))     //获取版本信息
         {
-            m_row_data = true;
-        }
-        else if (CCommon::GetURL(L"https://github.com/flyme2venus/TrafficMonitor/blob/master/version_utf8.info", version_info, true))      //获取版本信息
-        {
-            m_row_data = false;
-        }
-        else
-        {
-            return false;
-        }
-
-        if (!m_row_data)
-        {
-            size_t index = version_info.find(L"﻿&lt;version&gt;");
-            if (index != std::wstring::npos)
-                version_info = version_info.substr(index);
-
-            CString str_version_info = version_info.c_str();
-            str_version_info.Replace(L"&lt;", L"<");
-            str_version_info.Replace(L"&gt;", L">");
-
-            version_info = str_version_info;
+            succeed = true;
+            break;
         }
     }
-    //使用Gitee更新源（本仓库没有 Gitee 镜像，同样读取本仓库的更新信息）
-    else
-    {
-        if (!CCommon::GetURL(update_info_url, version_info, true))     //获取版本信息
-            return false;
-    }
+    if (!succeed)
+        return false;
+
+    m_row_data = true;
 
     ParseUpdateInfo(version_info);
 
