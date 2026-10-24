@@ -586,10 +586,26 @@ void CTaskBarDlgDrawCommonWindowSupport::RequestD3D10Device1Recreate()
 
 void CTaskBarDlgDrawCommonWindowSupport::CDWriteHelper::SetFont(HFONT h_font)
 {
-    //先在已缓存的字体中查找
+    if (h_font == nullptr)
+        return;
+
+    //当前字体就是目标字体，直接返回（绘制时的常见路径，避免每帧都调用GetObject）
+    if (m_font_entries[m_current_index].h_font == h_font)
+        return;
+
+    LOGFONTW log_font{};
+    if (::GetObject(h_font, sizeof(log_font), &log_font) == 0)
+        return;
+
+    //在已缓存的字体中查找。字体对象被删除重建后，系统可能复用同一个句柄值，
+    //因此除了句柄还要比较字号、字重和斜体，避免命中过期的TextFormat。
     for (int i = 0; i < FONT_ENTRY_COUNT; i++)
     {
-        if (m_font_entries[i].h_font == h_font && h_font != nullptr)
+        FontEntry& cached = m_font_entries[i];
+        if (cached.h_font == h_font
+            && cached.log_font.lfHeight == log_font.lfHeight
+            && cached.log_font.lfWeight == log_font.lfWeight
+            && cached.log_font.lfItalic == log_font.lfItalic)
         {
             m_current_index = i;
             return;
@@ -598,10 +614,9 @@ void CTaskBarDlgDrawCommonWindowSupport::CDWriteHelper::SetFont(HFONT h_font)
 
     //没有找到，则创建一个新的TextFormat，并替换当前槽位
     int index = m_current_index;
-    //如果当前槽位为空，则使用空槽位
+    //如果当前槽位非空，则优先使用另一个空槽位
     if (m_font_entries[index].h_font != nullptr)
     {
-        //优先使用另一个空槽位
         for (int i = 0; i < FONT_ENTRY_COUNT; i++)
         {
             if (m_font_entries[i].h_font == nullptr)
@@ -613,7 +628,7 @@ void CTaskBarDlgDrawCommonWindowSupport::CDWriteHelper::SetFont(HFONT h_font)
     }
 
     FontEntry& entry = m_font_entries[index];
-    ::GetObject(h_font, sizeof(entry.log_font), &entry.log_font);
+    entry.log_font = log_font;
 
     auto abs_font_height_f =
         static_cast<float>(std::abs(entry.log_font.lfHeight));
@@ -1856,9 +1871,23 @@ CDC* CTaskBarDlgDrawCommon::GetDC()
 void CTaskBarDlgDrawCommon::GetTextExtent(const wchar_t* lpszString, int& w, int& h)
 {
     CDC* pDC = GetDC();
+    //interop CDC 里未必选中了当前字体，测量前先选入，否则测得的尺寸和实际绘制不一致
+    HFONT h_font = m_p_window_support->GetFont();
+    CFont* p_old_font{};
+    if (h_font != nullptr)
+        p_old_font = pDC->SelectObject(CFont::FromHandle(h_font));
     CSize size = pDC->GetTextExtent(lpszString);
+    if (p_old_font != nullptr)
+        pDC->SelectObject(p_old_font);
     w = size.cx;
     h = size.cy;
+}
+
+int CTaskBarDlgDrawCommon::GetTextWidth(LPCTSTR lpszString)
+{
+    int w{}, h{};
+    GetTextExtent(lpszString, w, h);
+    return w;
 }
 
 CTaskBarDlgDrawBuffer::CTaskBarDlgDrawBuffer(

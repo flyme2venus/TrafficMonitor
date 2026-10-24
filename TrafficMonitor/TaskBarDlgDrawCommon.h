@@ -1027,6 +1027,7 @@ public:
     void DrawIcon(HICON hIcon, CPoint start_point, CSize size) override;
     virtual CDC* GetDC() override;
     virtual void GetTextExtent(const wchar_t* lpszString, int& w, int& h) override;
+    virtual int GetTextWidth(LPCTSTR lpszString) override;
 
     void Create(
         CTaskBarDlgDrawCommonWindowSupport& taskbar_dlg_draw_common_window_support,
