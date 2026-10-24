@@ -21,14 +21,19 @@ void CUpdateHelper::SetUpdateSource(UpdateSource update_source)
 bool CUpdateHelper::CheckForUpdate()
 {
     wstring version_info;
+    //注：本仓库是上游 TrafficMonitor 的个人定制版，更新信息统一从本仓库获取，
+    //避免把用户引导到上游版本（上游版本不包含本仓库的定制功能）。
+    //“更新源”选项仍然保留（GitHub/Gitee），但两者都读取同一个更新信息文件：
+    //本仓库没有 Gitee 镜像，因此 Gitee 源也指向本仓库的 GitHub 地址。
+    const wchar_t* update_info_url = L"https://raw.githubusercontent.com/flyme2venus/TrafficMonitor/master/version_utf8.info";
     //使用GitHub更新源
     if (m_update_source == UpdateSource::GitHubSource)
     {
-        if (CCommon::GetURL(L"https://raw.githubusercontent.com/zhongyang219/TrafficMonitor/master/version_utf8.info", version_info, true))     //获取版本信息
+        if (CCommon::GetURL(update_info_url, version_info, true))     //获取版本信息
         {
             m_row_data = true;
         }
-        else if (CCommon::GetURL(L"https://github.com/zhongyang219/TrafficMonitor/blob/master/version_utf8.info", version_info, true))      //获取版本信息
+        else if (CCommon::GetURL(L"https://github.com/flyme2venus/TrafficMonitor/blob/master/version_utf8.info", version_info, true))      //获取版本信息
         {
             m_row_data = false;
         }
@@ -50,10 +55,10 @@ bool CUpdateHelper::CheckForUpdate()
             version_info = str_version_info;
         }
     }
-    //使用Gitee更新源
+    //使用Gitee更新源（本仓库没有 Gitee 镜像，同样读取本仓库的更新信息）
     else
     {
-        if (!CCommon::GetURL(L"https://gitee.com/zhongyang219/TrafficMonitor/raw/master/version_utf8.info", version_info, true))     //获取版本信息
+        if (!CCommon::GetURL(update_info_url, version_info, true))     //获取版本信息
             return false;
     }
 
